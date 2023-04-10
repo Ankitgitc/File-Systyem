@@ -1,0 +1,129 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#define DISK_SIZE 1024     // Size of simulated disk in blocks
+#define BLOCK_SIZE 4       // Size of each block in bytes
+#define MAX_FILENAME_LEN 32  // Maximum length of a file name
+
+// File allocation algorithms
+#define CONTIGUOUS_ALLOCATION 1
+#define LINKED_ALLOCATION 2
+
+// File operations
+#define CREATE_FILE 1
+#define DELETE_FILE 2
+#define RENAME_FILE  3
+#define MOVE_FILE 4
+
+
+// Data structures
+struct file_allocation {
+    int start_block;
+    int num_blocks;
+};
+
+struct file {
+    char name[MAX_FILENAME_LEN];
+    int size;
+    struct file_allocation allocation;
+};
+
+// Function prototypes
+void init_disk();
+int allocate_blocks(int num_blocks, int algorithm);
+void deallocate_blocks(int start_block, int num_blocks);
+void create_file();
+void delete_file();
+void rename_file();
+void move_file();
+void print_disk_stats();
+
+// Global variables
+char* disk;
+int num_free_blocks;
+struct file* files;
+int num_files = 10;
+
+int main() {
+    int i, j;
+    int num_iterations = 1000;  // Number of simulation iterations
+    int num_operations = 100;   // Number of file operations per iteration
+    int algorithm = CONTIGUOUS_ALLOCATION;  // File allocation algorithm
+
+    // Initialize disk and files
+    init_disk();
+    files = malloc(sizeof(struct file) * num_files);
+    for (i = 0; i < num_files; i++) {
+        sprintf(files[i].name, "file%d", i);
+        files[i].size = rand() % 1024;
+    }
+
+    // Run simulation
+    for (i = 0; i < num_iterations; i++) {
+        printf("Iteration %d\n", i);
+        for (j = 0; j < num_operations; j++) {
+            int op = rand() % 4 + 1;
+            switch (op) {
+                case CREATE_FILE:
+                    create_file();
+                    break;
+                case DELETE_FILE:
+                    delete_file();
+                    break;
+                case RENAME_FILE:
+                    rename_file();
+                    break;
+                case MOVE_FILE:
+                    move_file();
+                    break;
+                default:
+                    printf("Unknown operation %d\n", op);
+                    break;
+            }
+        }
+        print_disk_stats();
+    }
+
+    // Clean up
+    free(disk);
+    free(files);
+
+    return 0;
+}
+
+void init_disk() {
+    int i;
+    disk = malloc(sizeof(char) * DISK_SIZE * BLOCK_SIZE);
+    memset(disk, 0, sizeof(char) * DISK_SIZE * BLOCK_SIZE);
+        num_free_blocks = DISK_SIZE;
+}
+int allocate_blocks(int num_blocks, int algorithm) {
+    int i, start_block;
+    switch (algorithm) {
+        case CONTIGUOUS_ALLOCATION:
+            // Find first contiguous block of num_blocks
+            for (i = 0; i < DISK_SIZE; i++) {
+                if (disk[i * BLOCK_SIZE] == 0 && i + num_blocks <= DISK_SIZE) {
+                    int j;
+                    for (j = i; j < i + num_blocks; j++) {
+                        if (disk[j * BLOCK_SIZE] != 0) {
+                            break;
+                        }
+                    }
+                    if (j == i + num_blocks) {
+                        // Found contiguous block, mark as used
+                        for (j = i; j < i + num_blocks; j++) {
+                            disk[j * BLOCK_SIZE] = 1;
+                        }
+                        num_free_blocks -= num_blocks;
+                        return i;
+                    }
+                }
+            }
+            break;
+        default:
+            return -1;
+    }
+}
